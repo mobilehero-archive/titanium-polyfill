@@ -28,7 +28,7 @@
 			"url": "https://brenton.house"
 		}
 	],
-	"license": "MIT",
+	"license": "See license.md",
 	"repository": {
 		"type": "git",
 		"url": "github:brentonhouse/titanium-polyfill"
