@@ -1,4 +1,4 @@
-<a href="#titaniumevents">
+<a href="#titaniumpolyfill">
 	<p align="center">
 		<img src="https://cdn.secure-api.org/images/warning-sign-area51.png" width="80%" />
 		<img src="https://cdn.secure-api.org/images/border-line-3.png" width="70%" height="50" />
@@ -6,381 +6,67 @@
 </a>
 
 
-# @titanium/events
+# @titanium/polyfill
 
-[![@titanium/events](https://img.shields.io/npm/v/@titanium/events.png)](https://www.npmjs.com/package/@titanium/events)
-[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=brentonhouse/titanium-events)](https://dependabot.com)
-
-* [SYNOPSIS](#synopsis)
-* [DESCRIPTION](#description)
-	* [FEATURES](#features)
-	* [Differences (Non-breaking, compatible with existing EventEmitter)](#differences-non-breaking-compatible-with-existing-eventemitter)
-	* [emitter.addListener(event, listener)](#emitteraddlistenerevent-listener)
-	* [emitter.on(event, listener)](#emitteronevent-listener)
-	* [emitter.prependListener(event, listener)](#emitterprependlistenerevent-listener)
-	* [emitter.onAny(listener)](#emitteronanylistener)
-	* [emitter.prependAny(listener)](#emitterprependanylistener)
-	* [emitter.offAny(listener)](#emitteroffanylistener)
-		* [emitter.once(event, listener)](#emitteronceevent-listener)
-		* [emitter.prependOnceListener(event, listener)](#emitterprependoncelistenerevent-listener)
-	* [emitter.many(event, timesToListen, listener)](#emittermanyevent-timestolisten-listener)
-	* [emitter.prependMany(event, timesToListen, listener)](#emitterprependmanyevent-timestolisten-listener)
-	* [emitter.removeListener(event, listener)](#emitterremovelistenerevent-listener)
-	* [emitter.off(event, listener)](#emitteroffevent-listener)
-	* [emitter.removeAllListeners([event])](#emitterremovealllistenersevent)
-	* [emitter.setMaxListeners(n)](#emittersetmaxlistenersn)
-	* [emitter.listeners(event)](#emitterlistenersevent)
-	* [emitter.listenersAny()](#emitterlistenersany)
-	* [emitter.emit(event, [arg1], [arg2], [...])](#emitteremitevent-arg1-arg2-)
-	* [emitter.emitAsync(event, [arg1], [arg2], [...])](#emitteremitasyncevent-arg1-arg2-)
-	* [emitter.eventNames()](#emittereventnames)
+[![@titanium/polyfill](https://img.shields.io/npm/v/@titanium/polyfill.png)](https://www.npmjs.com/package/@titanium/polyfill)
+[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=brentonhouse/titanium-polyfill)](https://dependabot.com)
 
 
-> Titanium native mobile event emitter implementation [eventemitter2] with namespaces, wildcards, TTL and browser support
+> Titanium native mobile polyfills for some Node.js core and global modules
 
-## SYNOPSIS
+## 📝 Description
 
-EventEmitter2 is an implementation of the EventEmitter module found in Node.js. In addition to having a better benchmark performance than EventEmitter and being browser-compatible, it also extends the interface of EventEmitter with additional non-breaking features.
+For use with requesting data on the internet with Titanium Native mobile apps
 
-> This is a repackaging is based on [eventemitter2](https://github.com/EventEmitter2/EventEmitter2) v5.0.1
+## ✨ Features
+
+* [X] Polyfill for Node.js `events`
+* [X] Polyfill for Node.js `buffer`
+* [X] Polyfill for Node.js `querystring`
+* [X] Polyfill for Node.js `crypto`
+* [ ] Polyfill for Node.js `http`
+* [ ] Polyfill for Node.js `https`
 
 
-## DESCRIPTION
 
-### FEATURES
- - Namespaces/Wildcards.
- - Times To Listen (TTL), extends the `once` concept with `many`.
- - Browser environment compatibility.
- - Demonstrates good performance in benchmarks
+## 🚀 Getting Started
 
-```
-EventEmitterHeatUp x 3,728,965 ops/sec \302\2610.68% (60 runs sampled)
-EventEmitter x 2,822,904 ops/sec \302\2610.74% (63 runs sampled)
-EventEmitter2 x 7,251,227 ops/sec \302\2610.55% (58 runs sampled)
-EventEmitter2 (wild) x 3,220,268 ops/sec \302\2610.44% (65 runs sampled)
-Fastest is EventEmitter2
+### Installing
+
+> Please ensure there is a package.json file in the target directory.  If there is not one present, you can create one with `npm init`.
+
+
+If you wish to install this in an app using Titanium Turbo, you can execute this in the project root directory:
+
+```bash
+npm install @titanium/polyfill
 ```
 
-### Differences (Non-breaking, compatible with existing EventEmitter)
-
- - The EventEmitter2 constructor takes an optional configuration object.
- 
-```javascript
-var EventEmitter2 = require('eventemitter2').EventEmitter2;
-var server = new EventEmitter2({
-
-  //
-  // set this to `true` to use wildcards. It defaults to `false`.
-  //
-  wildcard: true,
-
-  //
-  // the delimiter used to segment namespaces, defaults to `.`.
-  //
-  delimiter: '::', 
-  
-  //
-  // set this to `true` if you want to emit the newListener event. The default value is `true`.
-  //
-  newListener: false, 
-
-  //
-  // the maximum amount of listeners that can be assigned to an event, default 10.
-  //
-  maxListeners: 20,
-  
-  //
-  // show event name in memory leak message when more than maximum amount of listeners is assigned, default false
-  //
-  verboseMemoryLeak: false
-});
-```
-
- - Getting the actual event that fired.
+### Usage
 
 ```javascript
-server.on('foo.*', function(value1, value2) {
-  console.log(this.event, value1, value2);
-});
-```
-
- - Fire an event N times and then remove it, an extension of the `once` concept.
-
-```javascript
-server.many('foo', 4, function() {
-  console.log('hello');
-});
-```
-
- - Pass in a namespaced event as an array rather than a delimited string.
-
-```javascript
-server.many(['foo', 'bar', 'bazz'], 4, function() {
-  console.log('hello');
-});
-```
-
-# Installing
-
-```console
-$ npm install --save eventemitter2
-```
-
-# API
-
-When an `EventEmitter` instance experiences an error, the typical action is
-to emit an `error` event. Error events are treated as a special case.
-If there is no listener for it, then the default action is to print a stack
-trace and exit the program.
-
-All EventEmitters emit the event `newListener` when new listeners are
-added. EventEmitters also emit the event `removeListener` when listeners are
-removed, and `removeListenerAny` when listeners added through `onAny` are
-removed.
-
-
-**Namespaces** with **Wildcards**
-To use namespaces/wildcards, pass the `wildcard` option into the EventEmitter 
-constructor. When namespaces/wildcards are enabled, events can either be 
-strings (`foo.bar`) separated by a delimiter or arrays (`['foo', 'bar']`). The 
-delimiter is also configurable as a constructor option.
-
-An event name passed to any event emitter method can contain a wild card (the 
-`*` character). If the event name is a string, a wildcard may appear as `foo.*`. 
-If the event name is an array, the wildcard may appear as `['foo', '*']`.
-
-If either of the above described events were passed to the `on` method, 
-subsequent emits such as the following would be observed...
-
-```javascript
-emitter.emit('foo.bazz');
-emitter.emit(['foo', 'bar']);
-```
-
-**NOTE:** An event name may use more than one wildcard. For example, 
-`foo.*.bar.*` is a valid event name, and would match events such as
-`foo.x.bar.y`, or `['foo', 'bazz', 'bar', 'test']` 
-
-# Multi-level Wildcards
-A double wildcard (the string `**`) matches any number of levels (zero or more) of events. So if for example `'foo.**'` is passed to the `on` method, the following events would be observed:
-
-````javascript
-emitter.emit('foo');
-emitter.emit('foo.bar');
-emitter.emit('foo.bar.baz');
-````
-
-On the other hand, if the single-wildcard event name was passed to the on method, the callback would only observe the second of these events.
-
-
-### emitter.addListener(event, listener)
-### emitter.on(event, listener)
-
-Adds a listener to the end of the listeners array for the specified event.
-
-```javascript
-server.on('data', function(value1, value2, value3, ...) {
-  console.log('The event was raised!');
-});
-```
-
-```javascript
-server.on('data', function(value) {
-  console.log('The event was raised!');
-});
-```
-
-### emitter.prependListener(event, listener)
-
-Adds a listener to the beginning of the listeners array for the specified event.
-
-```javascript
-server.prependListener('data', function(value1, value2, value3, ...) {
-  console.log('The event was raised!');
-});
+const buffer = require('buffer');
+const events = require('events');
+const querystring = require('querystring');
+const crypto = require('crypto');
 ```
 
 
-### emitter.onAny(listener)
+## 🔗 Related Links
 
-Adds a listener that will be fired when any event is emitted. The event name is passed as the first argument to the callback.
+⭐  [Geek Mobile Toolkit](https://www.npmjs.com/package/@geek/mobile) - Toolkit for creating, building, and managing mobile app projects.   
+⭐  [Titanium Turbo Template (Default)](https://www.npmjs.com/package/@titanium/template-turbo-default) - Template for default Turbo app.  Based on the basic Alloy Template + some extra goodies.   
+⭐  [Titanium Turbo Template (Next)](https://www.npmjs.com/package/@titanium/template-turbo-next) - Template for Turbo app (with extras).  Based on the default Turbo Template + some extras.   
+⭐  [Titanium Mobile](https://www.npmjs.com/package/titanium) - Open-source tool for building powerful, cross-platform native apps with JavaScript.   
+⭐  [Alloy](https://www.npmjs.com/package/alloy) - MVC framework built on top of Titanium Mobile.   
+⭐  [Appcelerator](https://www.npmjs.com/package/appcelerator) - Installer for the Appcelerator Platform tool   
 
-```javascript
-server.onAny(function(event, value) {
-  console.log('All events trigger this.');
-});
-```
+## 📚Learn More
 
-### emitter.prependAny(listener)
+⭐  [Axway Developer Blog](https://devblog.axway.com)   
+⭐  [Axway Developer YouTube Channel](https://youtube.com/axwaydev)   
+⭐  [Axway Developer Portal](https://developer.axway.com)   
 
-Adds a listener that will be fired when any event is emitted. The event name is passed as the first argument to the callback. The listener is added to the beginning of the listeners array
+## 📣 Feedback
 
-```javascript
-server.prependAny(function(event, value) {
-  console.log('All events trigger this.');
-});
-```
-
-### emitter.offAny(listener)
-
-Removes the listener that will be fired when any event is emitted.
-
-```javascript
-server.offAny(function(value) {
-  console.log('The event was raised!');
-});
-```
-
-#### emitter.once(event, listener)
-
-Adds a **one time** listener for the event. The listener is invoked 
-only the first time the event is fired, after which it is removed.
-
-```javascript
-server.once('get', function (value) {
-  console.log('Ah, we have our first value!');
-});
-```
-
-#### emitter.prependOnceListener(event, listener)
-
-Adds a **one time** listener for the event. The listener is invoked 
-only the first time the event is fired, after which it is removed.
-The listener is added to the beginning of the listeners array
-
-```javascript
-server.prependOnceListener('get', function (value) {
-  console.log('Ah, we have our first value!');
-});
-```
-
-### emitter.many(event, timesToListen, listener)
-
-Adds a listener that will execute **n times** for the event before being
-removed. The listener is invoked only the first **n times** the event is 
-fired, after which it is removed.
-
-```javascript
-server.many('get', 4, function (value) {
-  console.log('This event will be listened to exactly four times.');
-});
-```
-
-### emitter.prependMany(event, timesToListen, listener)
-
-Adds a listener that will execute **n times** for the event before being
-removed. The listener is invoked only the first **n times** the event is 
-fired, after which it is removed.
-The listener is added to the beginning of the listeners array.
-
-```javascript
-server.many('get', 4, function (value) {
-  console.log('This event will be listened to exactly four times.');
-});
-```
-
-
-
-### emitter.removeListener(event, listener)
-### emitter.off(event, listener)
-
-Remove a listener from the listener array for the specified event. 
-**Caution**: Calling this method changes the array indices in the listener array behind the listener.
-
-```javascript
-var callback = function(value) {
-  console.log('someone connected!');
-};
-server.on('get', callback);
-// ...
-server.removeListener('get', callback);
-```
-
-
-### emitter.removeAllListeners([event])
-
-Removes all listeners, or those of the specified event.
-
-
-### emitter.setMaxListeners(n)
-
-By default EventEmitters will print a warning if more than 10 listeners 
-are added to it. This is a useful default which helps finding memory leaks. 
-Obviously not all Emitters should be limited to 10. This function allows 
-that to be increased. Set to zero for unlimited.
-
-
-### emitter.listeners(event)
-
-Returns an array of listeners for the specified event. This array can be 
-manipulated, e.g. to remove listeners.
-
-```javascript
-server.on('get', function(value) {
-  console.log('someone connected!');
-});
-console.log(server.listeners('get')); // [ [Function] ]
-```
-
-### emitter.listenersAny()
-
-Returns an array of listeners that are listening for any event that is 
-specified. This array can be manipulated, e.g. to remove listeners.
-
-```javascript
-server.onAny(function(value) {
-  console.log('someone connected!');
-});
-console.log(server.listenersAny()[0]); // [ [Function] ]
-```
-
-### emitter.emit(event, [arg1], [arg2], [...])
-
-Execute each of the listeners that may be listening for the specified event 
-name in order with the list of arguments.
-
-### emitter.emitAsync(event, [arg1], [arg2], [...])
-
-Return the results of the listeners via [Promise.all](https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/Promise/all).
-Only this method doesn't work [IE](http://caniuse.com/#search=promise).
-
-```javascript
-emitter.on('get',function(i) {
-  return new Promise(function(resolve){
-    setTimeout(function(){
-      resolve(i+3);
-    },50);
-  });
-});
-emitter.on('get',function(i) {
-  return new Promise(function(resolve){
-    resolve(i+2)
-  });
-});
-emitter.on('get',function(i) {
-  return Promise.resolve(i+1);
-});
-emitter.on('get',function(i) {
-  return i+0;
-});
-emitter.on('get',function(i) {
-  // noop
-});
-
-emitter.emitAsync('get',0)
-.then(function(results){
-  console.log(results); // [3,2,1,0,undefined]
-});
-```
-
-### emitter.eventNames()
-
-Returns an array listing the events for which the emitter has registered listeners. The values in the array will be strings.
-
-```javascript
-emitter.on('foo', () => {});
-emitter.on('bar', () => {});
-
-console.log(emitter.eventNames());
-// Prints: [ 'foo', 'bar' ]
-```
+Have an idea or a comment?  [Join in the conversation here](https://github.com/brentonhouse/titanium-jwt/issues)! 
