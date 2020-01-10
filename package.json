@@ -1,0 +1,43 @@
+{
+	"name": "@titanium/polyfill",
+	"version": "0.0.1",
+	"description": "Titanium native mobile polyfills necessary to use Node.js modules ",
+	"keywords": [
+		"event",
+		"events",
+		"emitter",
+		"eventemitter",
+		"titanium",
+		"mobile",
+		"axway",
+		"appcelerator",
+		"polyfill",
+		"node",
+		"buffer",
+		"brenton-house"
+	],
+	"author": {
+		"name": "Brenton House",
+		"email": "brenton.house@gmail.com",
+		"url": "https://brenton.house"
+	},
+	"maintainers": [
+		{
+			"name": "Brenton House",
+			"email": "brenton.house@gmail.com",
+			"url": "https://brenton.house"
+		}
+	],
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "github:brentonhouse/titanium-polyfill"
+	},
+	"devDependencies": {},
+	"main": "./index.js",
+	"scripts": {
+		"test": "npm install --ignore-scripts && npm run list-files",
+		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
+		"prepublishOnly": "git pull && bump"
+	}
+}
