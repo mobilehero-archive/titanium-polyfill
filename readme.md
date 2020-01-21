@@ -20,12 +20,35 @@ For use with requesting data on the internet with Titanium Native mobile apps
 
 ## ✨ Features
 
+### Polyfills added by Titanium Core
+
+* [X] Polyfill for Node.js `assert`
 * [X] Polyfill for Node.js `events`
+* [X] Polyfill for Node.js `fs`
+* [X] Polyfill for Node.js `os`
+* [X] Polyfill for Node.js `process`
+* [X] Polyfill for Node.js `string_decoder`
+* [X] Polyfill for Node.js `tty`
+* [X] Polyfill for Node.js `util`
+
+
+### Polyfills added by Titanium Core (but having compatibility issues)
+
+* [X] Polyfill for Node.js `buffer`  **- Does not work with packages expecting Node.js buffer**
+* [X] Polyfill for Node.js `path`  **- Some functions not working**
+
+
+### Polyfills added by @titanium/polyfill package
+
+
+* [X] Polyfill for Node.js `events` - Uses eventemitter2 for extra features
 * [X] Polyfill for Node.js `buffer`
 * [X] Polyfill for Node.js `querystring`
 * [X] Polyfill for Node.js `crypto`
-* [ ] Polyfill for Node.js `http`
+* [X] Polyfill for Node.js `http`
 * [ ] Polyfill for Node.js `https`
+
+
 
 
 
