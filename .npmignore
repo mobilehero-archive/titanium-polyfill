@@ -6,6 +6,9 @@
 .dependabot
 .github
 
+example/
+example/*
+
 # OS Directories and Files
 .DS_Store
 Thumbs.db
