@@ -7,4 +7,4 @@ global.Buffer = require('./buffer').Buffer;
 global.binding.register('querystring', require('./querystring'));
 global.binding.register('qs', require('./querystring'));
 global.binding.register('crypto', require('./crypto'));
-global.binding.register('http', require('./http'));
+// global.binding.register('http', require('./http'));
