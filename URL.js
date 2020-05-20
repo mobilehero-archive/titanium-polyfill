@@ -1,729 +1,453 @@
-// Copyright Joyent, Inc. and other Node contributors.
-//
-// Permission is hereby granted, free of charge, to any person obtaining a
-// copy of this software and associated documentation files (the
-// "Software"), to deal in the Software without restriction, including
-// without limitation the rights to use, copy, modify, merge, publish,
-// distribute, sublicense, and/or sell copies of the Software, and to permit
-// persons to whom the Software is furnished to do so, subject to the
-// following conditions:
-//
-// The above copyright notice and this permission notice shall be included
-// in all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-// OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-// NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-// DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-// OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-// USE OR OTHER DEALINGS IN THE SOFTWARE.
-
 'use strict';
 
-const punycode = require('punycode');
-const util = require('util');
+// const required = require('requires-port');
+const qs = require('querystring');
+const slashes = /^[A-Za-z][A-Za-z0-9+-.]*:\/\//;
+const protocolre = /^([a-z][a-z0-9.+-]*:)?(\/\/)?([\S\s]*)/i;
+const whitespace = '[\\x09\\x0A\\x0B\\x0C\\x0D\\x20\\xA0\\u1680\\u180E\\u2000\\u2001\\u2002\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200A\\u202F\\u205F\\u3000\\u2028\\u2029\\uFEFF]';
+const left = new RegExp(`^${whitespace}+`);
 
-exports.parse = urlParse;
-exports.resolve = urlResolve;
-exports.resolveObject = urlResolveObject;
-exports.format = urlFormat;
-
-exports.Url = Url;
-
-function Url() {
-	this.protocol = null;
-	this.slashes = null;
-	this.auth = null;
-	this.host = null;
-	this.port = null;
-	this.hostname = null;
-	this.hash = null;
-	this.search = null;
-	this.query = null;
-	this.pathname = null;
-	this.path = null;
-	this.href = null;
+/**
+ * Trim a given string.
+ *
+ * @param {string} str - String to trim.
+ * @public
+ */
+function trimLeft(str) {
+	return (str ? str : '').toString().replace(left, '');
 }
 
-// Reference: RFC 3986, RFC 1808, RFC 2396
+/**
+ * These are the parse rules for the URL parser, it informs the parser
+about:
 
-// define these here so at least they only have to be
-// compiled once on the first module load.
-const protocolPattern = /^([a-z0-9.+-]+:)/i;
-const portPattern = /:[0-9]*$/;
+0. The char it Needs to parse, if it's a string it should be done using
+indexOf, RegExp using exec and NaN means set as current value.
+1. The property we should set when parsing this value.
+2. Indication if it's backwards or forward parsing, when set as number it's
+the value of extra chars that should be split off.
+3. Inherit from location if non existing in the parser.
+4. `toLowerCase` the resulting value.
+ *
+ * @param address
+ */
+const rules = [
+	[ '#', 'hash' ],                        // Extract from the back.
+	[ '?', 'query' ],                       // Extract from the back.
+	function sanitize(address) {          // Sanitize what is left of the address
+		return address.replace('\\', '/');
+	},
+	[ '/', 'pathname' ],                    // Extract from the back.
+	[ '@', 'auth', 1 ],                     // Extract from the front.
+	[ NaN, 'host', undefined, 1, 1 ],       // Set left over value.
+	[ /:(\d+)$/, 'port', undefined, 1 ],    // RegExp the back.
+	[ NaN, 'hostname', undefined, 1, 1 ],    // Set left over.
+];
 
-// Special case for a simple path URL
-const simplePathPattern = /^(\/\/?(?!\/)[^\?\s]*)(\?[^\s]*)?$/;
+/**
+ * These properties should not be copied or inherited from. This is only needed
+ * for all non blob URL's as a blob URL does not include a hash, only the
+ * origin.
+ *
+ * @type {object}
+ * @private
+ */
+const ignore = { hash: 1, query: 1 };
 
-// RFC 2396: characters reserved for delimiting URLs.
-// We actually just auto-escape these.
-const delims = [ '<', '>', '"', '`', ' ', '\r', '\n', '\t' ];
+/**
+ * The location object differs when your code is loaded through a normal page,
+ * Worker or through a worker using a blob. And with the blobble begins the
+ * trouble as the location object will contain the URL of the blob, not the
+ * location of the page where our code is loaded in. The actual origin is
+ * encoded in the `pathname` so we can thankfully generate a good "default"
+ * location from it so we can generate proper relative URL's again.
+ *
+ * @param {object|string} loc - Optional default location object.
+ * @returns {object} lolcation object.
+ * @public
+ */
+function lolcation(loc) {
+	let globalVar;
 
-// RFC 2396: characters not allowed for various reasons.
-const unwise = [ '{', '}', '|', '\\', '^', '`' ].concat(delims);
+	if (typeof window !== 'undefined') { globalVar = window; } else if (typeof global !== 'undefined') { globalVar = global; } else if (typeof self !== 'undefined') { globalVar = self; } else { globalVar = {}; }
 
-// Allowed by RFCs, but cause of XSS attacks.  Always escape these.
-const autoEscape = [ '\'' ].concat(unwise);
-// Characters that are never ever allowed in a hostname.
-// Note that any invalid chars are also handled, but these
-// are the ones that are *expected* to be seen, so we fast-path
-// them.
-const nonHostChars = [ '%', '/', '?', ';', '#' ].concat(autoEscape);
-const hostEndingChars = [ '/', '?', '#' ];
-const hostnameMaxLen = 255;
-const hostnamePartPattern = /^[+a-z0-9A-Z_-]{0,63}$/;
-const hostnamePartStart = /^([+a-z0-9A-Z_-]{0,63})(.*)$/;
-// protocols that can allow "unsafe" and "unwise" chars.
-const unsafeProtocol = {
-	'javascript':  true,
-	'javascript:': true,
-};
-// protocols that never have a hostname.
-const hostlessProtocol = {
-	'javascript':  true,
-	'javascript:': true,
-};
-// protocols that always contain a // bit.
-const slashedProtocol = {
-	'http':    true,
-	'https':   true,
-	'ftp':     true,
-	'gopher':  true,
-	'file':    true,
-	'http:':   true,
-	'https:':  true,
-	'ftp:':    true,
-	'gopher:': true,
-	'file:':   true,
-};
-const querystring = require('querystring');
+	const location = globalVar.location || {};
+	loc = loc || location;
 
-function urlParse(url, parseQueryString, slashesDenoteHost) {
-	if (url && util.isObject(url) && url instanceof Url) { return url; }
+	let finaldestination = {};
+	const type = typeof loc;
+	let key;
 
-	const u = new Url();
-	u.parse(url, parseQueryString, slashesDenoteHost);
-	return u;
+	if (loc.protocol === 'blob:') {
+		finaldestination = new Url(unescape(loc.pathname), {});
+	} else if (type === 'string') {
+		finaldestination = new Url(loc, {});
+		for (key in ignore) { delete finaldestination[key]; }
+	} else if (type === 'object') {
+		for (key in loc) {
+			if (key in ignore) { continue; }
+			finaldestination[key] = loc[key];
+		}
+
+		if (finaldestination.slashes === undefined) {
+			finaldestination.slashes = slashes.test(loc.href);
+		}
+	}
+
+	return finaldestination;
 }
 
-Url.prototype.parse = function (url, parseQueryString, slashesDenoteHost) {
-	if (!util.isString(url)) {
-		throw new TypeError(`Parameter 'url' must be a string, not ${typeof url}`);
-	}
+/**
+ * @typedef ProtocolExtract
+ * @type Object
+ * @property {string} protocol Protocol matched in the URL, in lowercase.
+ * @property {boolean} slashes `true` if protocol is followed by "//", else `false`.
+ * @property {string} rest Rest of the URL that is not part of the protocol.
+ */
 
-	// Copy chrome, IE, opera backslash-handling behavior.
-	// Back slashes before the query string get converted to forward slashes
-	// See: https://code.google.com/p/chromium/issues/detail?id=25916
-	const queryIndex = url.indexOf('?');
-	const splitter
-          = (queryIndex !== -1 && queryIndex < url.indexOf('#')) ? '?' : '#';
-	const uSplit = url.split(splitter);
-	const slashRegex = /\\/g;
-	uSplit[0] = uSplit[0].replace(slashRegex, '/');
-	url = uSplit.join(splitter);
+/**
+ * Extract protocol information from a URL with/without double slash ("//").
+ *
+ * @param {string} address - URL we want to extract from.
+ * @returns {ProtocolExtract} Extracted information.
+ * @private
+ */
+function extractProtocol(address) {
+	address = trimLeft(address);
+	const match = protocolre.exec(address);
 
-	let rest = url;
-
-	// trim before proceeding.
-	// This is to support parse stuff like "  http://foo.com  \n"
-	rest = rest.trim();
-
-	if (!slashesDenoteHost && url.split('#').length === 1) {
-		// Try fast path regexp
-		const simplePath = simplePathPattern.exec(rest);
-		if (simplePath) {
-			this.path = rest;
-			this.href = rest;
-			this.pathname = simplePath[1];
-			if (simplePath[2]) {
-				this.search = simplePath[2];
-				if (parseQueryString) {
-					this.query = querystring.parse(this.search.substr(1));
-				} else {
-					this.query = this.search.substr(1);
-				}
-			} else if (parseQueryString) {
-				this.search = '';
-				this.query = {};
-			}
-			return this;
-		}
-	}
-
-	let proto = protocolPattern.exec(rest);
-	if (proto) {
-		proto = proto[0];
-		var lowerProto = proto.toLowerCase();
-		this.protocol = lowerProto;
-		rest = rest.substr(proto.length);
-	}
-
-	// figure out if it's got a host
-	// user@server is *always* interpreted as a hostname, and url
-	// resolution will treat //foo/bar as host=foo,path=bar because that's
-	// how the browser resolves relative URLs.
-	if (slashesDenoteHost || proto || rest.match(/^\/\/[^@\/]+@[^@\/]+/)) {
-		var slashes = rest.substr(0, 2) === '//';
-		if (slashes && !(proto && hostlessProtocol[proto])) {
-			rest = rest.substr(2);
-			this.slashes = true;
-		}
-	}
-
-	if (!hostlessProtocol[proto]
-      && (slashes || (proto && !slashedProtocol[proto]))) {
-
-		// there's a hostname.
-		// the first instance of /, ?, ;, or # ends the host.
-		//
-		// If there is an @ in the hostname, then non-host chars *are* allowed
-		// to the left of the last @ sign, unless some host-ending character
-		// comes *before* the @-sign.
-		// URLs are obnoxious.
-		//
-		// ex:
-		// http://a@b@c/ => user:a@b host:c
-		// http://a@b?@c => user:a host:c path:/?@c
-
-		// v0.12 TODO(isaacs): This is not quite how Chrome does things.
-		// Review our test case against browsers more comprehensively.
-
-		// find the first instance of any hostEndingChars
-		let hostEnd = -1;
-		for (var i = 0; i < hostEndingChars.length; i++) {
-			var hec = rest.indexOf(hostEndingChars[i]);
-			if (hec !== -1 && (hostEnd === -1 || hec < hostEnd)) { hostEnd = hec; }
-		}
-
-		// at this point, either we have an explicit point where the
-		// auth portion cannot go past, or the last @ char is the decider.
-		let auth; let atSign;
-		if (hostEnd === -1) {
-			// atSign can be anywhere.
-			atSign = rest.lastIndexOf('@');
-		} else {
-			// atSign must be in auth portion.
-			// http://a@b/c@d => host:b auth:a path:/c@d
-			atSign = rest.lastIndexOf('@', hostEnd);
-		}
-
-		// Now we have a portion which is definitely the auth.
-		// Pull that off.
-		if (atSign !== -1) {
-			auth = rest.slice(0, atSign);
-			rest = rest.slice(atSign + 1);
-			this.auth = decodeURIComponent(auth);
-		}
-
-		// the host is the remaining to the left of the first non-host char
-		hostEnd = -1;
-		for (var i = 0; i < nonHostChars.length; i++) {
-			var hec = rest.indexOf(nonHostChars[i]);
-			if (hec !== -1 && (hostEnd === -1 || hec < hostEnd)) { hostEnd = hec; }
-		}
-		// if we still have not hit it, then the entire thing is a host.
-		if (hostEnd === -1) { hostEnd = rest.length; }
-
-		this.host = rest.slice(0, hostEnd);
-		rest = rest.slice(hostEnd);
-
-		// pull out port.
-		this.parseHost();
-
-		// we've indicated that there is a hostname,
-		// so even if it's empty, it has to be present.
-		this.hostname = this.hostname || '';
-
-		// if hostname begins with [ and ends with ]
-		// assume that it's an IPv6 address.
-		const ipv6Hostname = this.hostname[0] === '['
-        && this.hostname[this.hostname.length - 1] === ']';
-
-		// validate a little.
-		if (!ipv6Hostname) {
-			const hostparts = this.hostname.split(/\./);
-			for (var i = 0, l = hostparts.length; i < l; i++) {
-				const part = hostparts[i];
-				if (!part) { continue; }
-				if (!part.match(hostnamePartPattern)) {
-					let newpart = '';
-					for (let j = 0, k = part.length; j < k; j++) {
-						if (part.charCodeAt(j) > 127) {
-							// we replace non-ASCII char with a temporary placeholder
-							// we need this to make sure size of hostname is not
-							// broken by replacing non-ASCII by nothing
-							newpart += 'x';
-						} else {
-							newpart += part[j];
-						}
-					}
-					// we test again with ASCII char only
-					if (!newpart.match(hostnamePartPattern)) {
-						const validParts = hostparts.slice(0, i);
-						const notHost = hostparts.slice(i + 1);
-						const bit = part.match(hostnamePartStart);
-						if (bit) {
-							validParts.push(bit[1]);
-							notHost.unshift(bit[2]);
-						}
-						if (notHost.length) {
-							rest = `/${notHost.join('.')}${rest}`;
-						}
-						this.hostname = validParts.join('.');
-						break;
-					}
-				}
-			}
-		}
-
-		if (this.hostname.length > hostnameMaxLen) {
-			this.hostname = '';
-		} else {
-			// hostnames are always lower case.
-			this.hostname = this.hostname.toLowerCase();
-		}
-
-		if (!ipv6Hostname) {
-			// IDNA Support: Returns a punycoded representation of "domain".
-			// It only converts parts of the domain name that
-			// have non-ASCII characters, i.e. it doesn't matter if
-			// you call it with a domain that already is ASCII-only.
-			this.hostname = punycode.toASCII(this.hostname);
-		}
-
-		var p = this.port ? `:${this.port}` : '';
-		const h = this.hostname || '';
-		this.host = h + p;
-		this.href += this.host;
-
-		// strip [ and ] from the hostname
-		// the host field still retains them, though
-		if (ipv6Hostname) {
-			this.hostname = this.hostname.substr(1, this.hostname.length - 2);
-			if (rest[0] !== '/') {
-				rest = `/${rest}`;
-			}
-		}
-	}
-
-	// now rest is set to the post-host stuff.
-	// chop off any delim chars.
-	if (!unsafeProtocol[lowerProto]) {
-
-		// First, make 100% sure that any "autoEscape" chars get
-		// escaped, even if encodeURIComponent doesn't think they
-		// need to be.
-		for (var i = 0, l = autoEscape.length; i < l; i++) {
-			const ae = autoEscape[i];
-			if (rest.indexOf(ae) === -1) { continue; }
-			let esc = encodeURIComponent(ae);
-			if (esc === ae) {
-				esc = escape(ae);
-			}
-			rest = rest.split(ae).join(esc);
-		}
-	}
-
-
-	// chop off from the tail first.
-	const hash = rest.indexOf('#');
-	if (hash !== -1) {
-		// got a fragment string.
-		this.hash = rest.substr(hash);
-		rest = rest.slice(0, hash);
-	}
-	const qm = rest.indexOf('?');
-	if (qm !== -1) {
-		this.search = rest.substr(qm);
-		this.query = rest.substr(qm + 1);
-		if (parseQueryString) {
-			this.query = querystring.parse(this.query);
-		}
-		rest = rest.slice(0, qm);
-	} else if (parseQueryString) {
-		// no query string, but parseQueryString still requested
-		this.search = '';
-		this.query = {};
-	}
-	if (rest) { this.pathname = rest; }
-	if (slashedProtocol[lowerProto]
-      && this.hostname && !this.pathname) {
-		this.pathname = '/';
-	}
-
-	// to support http.request
-	if (this.pathname || this.search) {
-		var p = this.pathname || '';
-		const s = this.search || '';
-		this.path = p + s;
-	}
-
-	// finally, reconstruct the href based on what has been validated.
-	this.href = this.format();
-	return this;
-};
-
-// format a parsed object into a url string
-function urlFormat(obj) {
-	// ensure it's an object, and not a string url.
-	// If it's an obj, this is a no-op.
-	// this way, you can call url_format() on strings
-	// to clean up potentially wonky urls.
-	if (util.isString(obj)) { obj = urlParse(obj); }
-	if (!(obj instanceof Url)) { return Url.prototype.format.call(obj); }
-	return obj.format();
+	return {
+		protocol: match[1] ? match[1].toLowerCase() : '',
+		slashes:  !!match[2],
+		rest:     match[3],
+	};
 }
 
-Url.prototype.format = function () {
-	let auth = this.auth || '';
-	if (auth) {
-		auth = encodeURIComponent(auth);
-		auth = auth.replace(/%3A/i, ':');
-		auth += '@';
-	}
+/**
+ * Resolve a relative URL pathname against a base URL pathname.
+ *
+ * @param {string} relative - Pathname of the relative URL.
+ * @param {string} base - Pathname of the base URL.
+ * @returns {string} Resolved pathname.
+ * @private
+ */
+function resolve(relative, base) {
+	if (relative === '') { return base; }
 
-	let protocol = this.protocol || '';
-	let pathname = this.pathname || '';
-	let hash = this.hash || '';
-	let host = false;
-	let query = '';
-
-	if (this.host) {
-		host = auth + this.host;
-	} else if (this.hostname) {
-		host = auth + (this.hostname.indexOf(':') === -1
-			? this.hostname
-			: `[${this.hostname}]`);
-		if (this.port) {
-			host += `:${this.port}`;
-		}
-	}
-
-	if (this.query
-      && util.isObject(this.query)
-      && Object.keys(this.query).length) {
-		query = querystring.stringify(this.query);
-	}
-
-	let search = this.search || (query && (`?${query}`)) || '';
-
-	if (protocol && protocol.substr(-1) !== ':') { protocol += ':'; }
-
-	// only the slashedProtocols get the //.  Not mailto:, xmpp:, etc.
-	// unless they had them to begin with.
-	if (this.slashes
-      || (!protocol || slashedProtocol[protocol]) && host !== false) {
-		host = `//${host || ''}`;
-		if (pathname && pathname.charAt(0) !== '/') { pathname = `/${pathname}`; }
-	} else if (!host) {
-		host = '';
-	}
-
-	if (hash && hash.charAt(0) !== '#') { hash = `#${hash}`; }
-	if (search && search.charAt(0) !== '?') { search = `?${search}`; }
-
-	pathname = pathname.replace(/[?#]/g, match => {
-		return encodeURIComponent(match);
-	});
-	search = search.replace('#', '%23');
-
-	return protocol + host + pathname + search + hash;
-};
-
-function urlResolve(source, relative) {
-	return urlParse(source, false, true).resolve(relative);
-}
-
-Url.prototype.resolve = function (relative) {
-	return this.resolveObject(urlParse(relative, false, true)).format();
-};
-
-function urlResolveObject(source, relative) {
-	if (!source) { return relative; }
-	return urlParse(source, false, true).resolveObject(relative);
-}
-
-Url.prototype.resolveObject = function (relative) {
-	if (util.isString(relative)) {
-		const rel = new Url();
-		rel.parse(relative, false, true);
-		relative = rel;
-	}
-
-	const result = new Url();
-	const tkeys = Object.keys(this);
-	for (let tk = 0; tk < tkeys.length; tk++) {
-		const tkey = tkeys[tk];
-		result[tkey] = this[tkey];
-	}
-
-	// hash is always overridden, no matter what.
-	// even href="" will remove it.
-	result.hash = relative.hash;
-
-	// if the relative url is empty, then there's nothing left to do here.
-	if (relative.href === '') {
-		result.href = result.format();
-		return result;
-	}
-
-	// hrefs like //foo/bar always cut to the protocol.
-	if (relative.slashes && !relative.protocol) {
-		// take everything except the protocol from relative
-		const rkeys = Object.keys(relative);
-		for (let rk = 0; rk < rkeys.length; rk++) {
-			const rkey = rkeys[rk];
-			if (rkey !== 'protocol') { result[rkey] = relative[rkey]; }
-		}
-
-		// urlParse appends trailing / to urls like http://www.example.com
-		if (slashedProtocol[result.protocol]
-        && result.hostname && !result.pathname) {
-			result.path = result.pathname = '/';
-		}
-
-		result.href = result.format();
-		return result;
-	}
-
-	if (relative.protocol && relative.protocol !== result.protocol) {
-		// if it's a known url protocol, then changing
-		// the protocol does weird things
-		// first, if it's not file:, then we MUST have a host,
-		// and if there was a path
-		// to begin with, then we MUST have a path.
-		// if it is file:, then the host is dropped,
-		// because that's known to be hostless.
-		// anything else is assumed to be absolute.
-		if (!slashedProtocol[relative.protocol]) {
-			const keys = Object.keys(relative);
-			for (let v = 0; v < keys.length; v++) {
-				const k = keys[v];
-				result[k] = relative[k];
-			}
-			result.href = result.format();
-			return result;
-		}
-
-		result.protocol = relative.protocol;
-		if (!relative.host && !hostlessProtocol[relative.protocol]) {
-			var relPath = (relative.pathname || '').split('/');
-			while (relPath.length && !(relative.host = relPath.shift())) {  }
-			if (!relative.host) { relative.host = ''; }
-			if (!relative.hostname) { relative.hostname = ''; }
-			if (relPath[0] !== '') { relPath.unshift(''); }
-			if (relPath.length < 2) { relPath.unshift(''); }
-			result.pathname = relPath.join('/');
-		} else {
-			result.pathname = relative.pathname;
-		}
-		result.search = relative.search;
-		result.query = relative.query;
-		result.host = relative.host || '';
-		result.auth = relative.auth;
-		result.hostname = relative.hostname || relative.host;
-		result.port = relative.port;
-		// to support http.request
-		if (result.pathname || result.search) {
-			const p = result.pathname || '';
-			const s = result.search || '';
-			result.path = p + s;
-		}
-		result.slashes = result.slashes || relative.slashes;
-		result.href = result.format();
-		return result;
-	}
-
-	const isSourceAbs = (result.pathname && result.pathname.charAt(0) === '/');
-	const isRelAbs = (
-		relative.host
-          || relative.pathname && relative.pathname.charAt(0) === '/'
-	);
-	let mustEndAbs = (isRelAbs || isSourceAbs
-                    || (result.host && relative.pathname));
-	const removeAllDots = mustEndAbs;
-	let srcPath = result.pathname && result.pathname.split('/') || [];
-	var relPath = relative.pathname && relative.pathname.split('/') || [];
-	const psychotic = result.protocol && !slashedProtocol[result.protocol];
-
-	// if the url is a non-slashed url, then relative
-	// links like ../.. should be able
-	// to crawl up to the hostname, as well.  This is strange.
-	// result.protocol has already been set by now.
-	// Later on, put the first path part into the host field.
-	if (psychotic) {
-		result.hostname = '';
-		result.port = null;
-		if (result.host) {
-			if (srcPath[0] === '') { srcPath[0] = result.host; } else { srcPath.unshift(result.host); }
-		}
-		result.host = '';
-		if (relative.protocol) {
-			relative.hostname = null;
-			relative.port = null;
-			if (relative.host) {
-				if (relPath[0] === '') { relPath[0] = relative.host; } else { relPath.unshift(relative.host); }
-			}
-			relative.host = null;
-		}
-		mustEndAbs = mustEndAbs && (relPath[0] === '' || srcPath[0] === '');
-	}
-
-	if (isRelAbs) {
-		// it's absolute.
-		result.host = (relative.host || relative.host === '')
-			? relative.host : result.host;
-		result.hostname = (relative.hostname || relative.hostname === '')
-			? relative.hostname : result.hostname;
-		result.search = relative.search;
-		result.query = relative.query;
-		srcPath = relPath;
-		// fall through to the dot-handling below.
-	} else if (relPath.length) {
-		// it's relative
-		// throw away the existing file, and take the new path instead.
-		if (!srcPath) { srcPath = []; }
-		srcPath.pop();
-		srcPath = srcPath.concat(relPath);
-		result.search = relative.search;
-		result.query = relative.query;
-	} else if (!util.isNullOrUndefined(relative.search)) {
-		// just pull out the search.
-		// like href='?foo'.
-		// Put this after the other two cases because it simplifies the booleans
-		if (psychotic) {
-			result.hostname = result.host = srcPath.shift();
-			// occationaly the auth can get stuck only in host
-			// this especially happens in cases like
-			// url.resolveObject('mailto:local1@domain1', 'local2@domain2')
-			var authInHost = result.host && result.host.indexOf('@') > 0
-				? result.host.split('@') : false;
-			if (authInHost) {
-				result.auth = authInHost.shift();
-				result.host = result.hostname = authInHost.shift();
-			}
-		}
-		result.search = relative.search;
-		result.query = relative.query;
-		// to support http.request
-		if (!util.isNull(result.pathname) || !util.isNull(result.search)) {
-			result.path = (result.pathname ? result.pathname : '')
-                    + (result.search ? result.search : '');
-		}
-		result.href = result.format();
-		return result;
-	}
-
-	if (!srcPath.length) {
-		// no path at all.  easy.
-		// we've already handled the other stuff above.
-		result.pathname = null;
-		// to support http.request
-		if (result.search) {
-			result.path = `/${result.search}`;
-		} else {
-			result.path = null;
-		}
-		result.href = result.format();
-		return result;
-	}
-
-	// if a url ENDs in . or .., then it must get a trailing slash.
-	// however, if it ends in anything else non-slashy,
-	// then it must NOT get a trailing slash.
-	let last = srcPath.slice(-1)[0];
-	const hasTrailingSlash = (
-		(result.host || relative.host || srcPath.length > 1)
-      && (last === '.' || last === '..') || last === '');
-
-	// strip single dots, resolve double dots to parent dir
-	// if the path tries to go above the root, `up` ends up > 0
+	const path = (base || '/').split('/').slice(0, -1).concat(relative.split('/'));
+	let i = path.length;
+	const last = path[i - 1];
+	let unshift = false;
 	let up = 0;
-	for (let i = srcPath.length; i >= 0; i--) {
-		last = srcPath[i];
-		if (last === '.') {
-			srcPath.splice(i, 1);
-		} else if (last === '..') {
-			srcPath.splice(i, 1);
+
+	while (i--) {
+		if (path[i] === '.') {
+			path.splice(i, 1);
+		} else if (path[i] === '..') {
+			path.splice(i, 1);
 			up++;
 		} else if (up) {
-			srcPath.splice(i, 1);
+			if (i === 0) { unshift = true; }
+			path.splice(i, 1);
 			up--;
 		}
 	}
 
-	// if the path is allowed to go above the root, restore leading ..s
-	if (!mustEndAbs && !removeAllDots) {
-		for (; up--; up) {
-			srcPath.unshift('..');
+	if (unshift) { path.unshift(''); }
+	if (last === '.' || last === '..') { path.push(''); }
+
+	return path.join('/');
+}
+
+/**
+ * The actual URL instance. Instead of returning an object we've opted-in to
+ * create an actual constructor as it's much more memory efficient and
+ * faster and it pleases my OCD.
+ *
+ * It is worth noting that we should not use `URL` as class name to prevent
+ * clashes with the global URL instance that got introduced in browsers.
+ *
+ * @class
+ * @param {string} address - URL we want to parse.
+ * @param {object|string} [location] - Location defaults for relative paths.
+ * @param {boolean|Function} [parser] - Parser for the query string.
+ * @private
+ */
+function Url(address, location, parser) {
+	address = trimLeft(address);
+
+	if (!(this instanceof Url)) {
+		return new Url(address, location, parser);
+	}
+
+	let relative; let extracted; let parse; let instruction; let index; let key
+    ; const instructions = rules.slice()
+    ; const type = typeof location
+    ; const url = this
+    ; let i = 0;
+
+	//
+	// The following if statements allows this module two have compatibility with
+	// 2 different API:
+	//
+	// 1. Node.js's `url.parse` api which accepts a URL, boolean as arguments
+	//    where the boolean indicates that the query string should also be parsed.
+	//
+	// 2. The `URL` interface of the browser which accepts a URL, object as
+	//    arguments. The supplied object will be used as default values / fall-back
+	//    for relative paths.
+	//
+	if (type !== 'object' && type !== 'string') {
+		parser = location;
+		location = null;
+	}
+
+	if (parser && typeof parser !== 'function') { parser = qs.parse; }
+
+	location = lolcation(location);
+
+	//
+	// Extract protocol information before running the instructions.
+	//
+	extracted = extractProtocol(address || '');
+	relative = !extracted.protocol && !extracted.slashes;
+	url.slashes = extracted.slashes || relative && location.slashes;
+	url.protocol = extracted.protocol || location.protocol || '';
+	address = extracted.rest;
+
+	//
+	// When the authority component is absent the URL starts with a path
+	// component.
+	//
+	if (!extracted.slashes) { instructions[3] = [ /(.*)/, 'pathname' ]; }
+
+	for (; i < instructions.length; i++) {
+		instruction = instructions[i];
+
+		if (typeof instruction === 'function') {
+			address = instruction(address);
+			continue;
 		}
-	}
 
-	if (mustEndAbs && srcPath[0] !== ''
-      && (!srcPath[0] || srcPath[0].charAt(0) !== '/')) {
-		srcPath.unshift('');
-	}
+		parse = instruction[0];
+		key = instruction[1];
 
-	if (hasTrailingSlash && (srcPath.join('/').substr(-1) !== '/')) {
-		srcPath.push('');
-	}
-
-	const isAbsolute = srcPath[0] === ''
-      || (srcPath[0] && srcPath[0].charAt(0) === '/');
-
-	// put the host back
-	if (psychotic) {
-		result.hostname = result.host = isAbsolute ? ''
-			: srcPath.length ? srcPath.shift() : '';
-		// occationaly the auth can get stuck only in host
-		// this especially happens in cases like
-		// url.resolveObject('mailto:local1@domain1', 'local2@domain2')
-		var authInHost = result.host && result.host.indexOf('@') > 0
-			? result.host.split('@') : false;
-		if (authInHost) {
-			result.auth = authInHost.shift();
-			result.host = result.hostname = authInHost.shift();
+		if (parse !== parse) {
+			url[key] = address;
+		} else if (typeof parse === 'string') {
+			if (~(index = address.indexOf(parse))) {
+				if (typeof instruction[2] === 'number') {
+					url[key] = address.slice(0, index);
+					address = address.slice(index + instruction[2]);
+				} else {
+					url[key] = address.slice(index);
+					address = address.slice(0, index);
+				}
+			}
+		} else if ((index = parse.exec(address))) {
+			url[key] = index[1];
+			address = address.slice(0, index.index);
 		}
+
+		url[key] = url[key] || (
+			relative && instruction[3] ? location[key] || '' : ''
+		);
+
+		//
+		// Hostname, host and protocol should be lowercased so they can be used to
+		// create a proper `origin`.
+		//
+		if (instruction[4]) { url[key] = url[key].toLowerCase(); }
 	}
 
-	mustEndAbs = mustEndAbs || (result.host && srcPath.length);
+	//
+	// Also parse the supplied query string in to an object. If we're supplied
+	// with a custom parser as function use that instead of the default build-in
+	// parser.
+	//
+	if (parser) { url.query = parser(url.query); }
 
-	if (mustEndAbs && !isAbsolute) {
-		srcPath.unshift('');
+	//
+	// If the URL is relative, resolve the pathname against the base URL.
+	//
+	if (
+		relative
+    && location.slashes
+    && url.pathname.charAt(0) !== '/'
+    && (url.pathname !== '' || location.pathname !== '')
+	) {
+		url.pathname = resolve(url.pathname, location.pathname);
 	}
 
-	if (!srcPath.length) {
-		result.pathname = null;
-		result.path = null;
-	} else {
-		result.pathname = srcPath.join('/');
+	//
+	// We should not add port numbers if they are already the default port number
+	// for a given protocol. As the host also contains the port number we're going
+	// override it with the hostname which contains no port number.
+	//
+	if (!required(url.port, url.protocol)) {
+		url.host = url.hostname;
+		url.port = '';
 	}
 
-	// to support request.http
-	if (!util.isNull(result.pathname) || !util.isNull(result.search)) {
-		result.path = (result.pathname ? result.pathname : '')
-                  + (result.search ? result.search : '');
+	//
+	// Parse down the `auth` for the username and password.
+	//
+	url.username = url.password = '';
+	if (url.auth) {
+		instruction = url.auth.split(':');
+		url.username = instruction[0] || '';
+		url.password = instruction[1] || '';
 	}
-	result.auth = relative.auth || result.auth;
-	result.slashes = result.slashes || relative.slashes;
-	result.href = result.format();
+
+	url.origin = url.protocol && url.host && url.protocol !== 'file:'
+		? `${url.protocol}//${url.host}`
+		: 'null';
+
+	//
+	// The href is just the compiled result.
+	//
+	url.href = url.toString();
+}
+
+/**
+ * This is convenience method for changing properties in the URL instance to
+ * insure that they all propagate correctly.
+ *
+ * @param {string} part          - Property we need to adjust.
+ * @param {Mixed} value          - The newly assigned value.
+ * @param {boolean|Function} fn  - When setting the query, it will be the function
+ *                               used to parse the query.
+ *                               When setting the protocol, double slash will be
+ *                               removed from the final url if it is true.
+ * @returns {URL} URL instance for chaining.
+ * @public
+ */
+function set(part, value, fn) {
+	const url = this;
+
+	switch (part) {
+		case 'query':
+			if (typeof value === 'string' && value.length) {
+				value = (fn || qs.parse)(value);
+			}
+
+			url[part] = value;
+			break;
+
+		case 'port':
+			url[part] = value;
+
+			if (!required(value, url.protocol)) {
+				url.host = url.hostname;
+				url[part] = '';
+			} else if (value) {
+				url.host = `${url.hostname}:${value}`;
+			}
+
+			break;
+
+		case 'hostname':
+			url[part] = value;
+
+			if (url.port) { value += `:${url.port}`; }
+			url.host = value;
+			break;
+
+		case 'host':
+			url[part] = value;
+
+			if (/:\d+$/.test(value)) {
+				value = value.split(':');
+				url.port = value.pop();
+				url.hostname = value.join(':');
+			} else {
+				url.hostname = value;
+				url.port = '';
+			}
+
+			break;
+
+		case 'protocol':
+			url.protocol = value.toLowerCase();
+			url.slashes = !fn;
+			break;
+
+		case 'pathname':
+		case 'hash':
+			if (value) {
+				const char = part === 'pathname' ? '/' : '#';
+				url[part] = value.charAt(0) !== char ? char + value : value;
+			} else {
+				url[part] = value;
+			}
+			break;
+
+		default:
+			url[part] = value;
+	}
+
+	for (let i = 0; i < rules.length; i++) {
+		const ins = rules[i];
+
+		if (ins[4]) { url[ins[1]] = url[ins[1]].toLowerCase(); }
+	}
+
+	url.origin = url.protocol && url.host && url.protocol !== 'file:'
+		? `${url.protocol}//${url.host}`
+		: 'null';
+
+	url.href = url.toString();
+
+	return url;
+}
+
+/**
+ * Transform the properties back in to a valid and full URL string.
+ *
+ * @param {Function} stringify - Optional query stringify function.
+ * @returns {string} Compiled version of the URL.
+ * @public
+ */
+function toString(stringify) {
+	if (!stringify || typeof stringify !== 'function') { stringify = qs.stringify; }
+
+	let query;
+	const url = this;
+	let { protocol } = url;
+
+	if (protocol && protocol.charAt(protocol.length - 1) !== ':') { protocol += ':'; }
+
+	let result = protocol + (url.slashes ? '//' : '');
+
+	if (url.username) {
+		result += url.username;
+		if (url.password) { result += `:${url.password}`; }
+		result += '@';
+	}
+
+	result += url.host + url.pathname;
+
+	query = typeof url.query === 'object' ? stringify(url.query) : url.query;
+	if (query) { result += query.charAt(0) !== '?' ? `?${query}` : query; }
+
+	if (url.hash) { result += url.hash; }
+
 	return result;
-};
+}
 
-Url.prototype.parseHost = function () {
-	let { host } = this;
-	let port = portPattern.exec(host);
-	if (port) {
-		port = port[0];
-		if (port !== ':') {
-			this.port = port.substr(1);
-		}
-		host = host.substr(0, host.length - port.length);
-	}
-	if (host) { this.hostname = host; }
-};
+Url.prototype = { set: set, toString: toString };
 
+//
+// Expose the URL parser and some additional properties that might be useful for
+// others or testing.
+//
+Url.extractProtocol = extractProtocol;
+Url.location = lolcation;
+Url.trimLeft = trimLeft;
+Url.qs = qs;
+
+
+module.exports = Url;
 global.URL = Url;
 
 const URLSearchParams = require('./URLSearchParams');
@@ -741,3 +465,32 @@ Object.defineProperty(global.URL.prototype, 'searchParams', {
 		 return searchParams;
 	  },
 });
+
+
+function required(port, protocol) {
+	protocol = protocol.split(':')[0];
+	port = +port;
+
+	if (!port) { return false; }
+
+	switch (protocol) {
+		case 'http':
+		case 'ws':
+			return port !== 80;
+
+		case 'https':
+		case 'wss':
+			return port !== 443;
+
+		case 'ftp':
+			return port !== 21;
+
+		case 'gopher':
+			return port !== 70;
+
+		case 'file':
+			return false;
+	}
+
+	return port !== 0;
+}
