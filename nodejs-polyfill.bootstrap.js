@@ -8,3 +8,5 @@ global.binding.register('querystring', require('./querystring'));
 global.binding.register('qs', require('./querystring'));
 global.binding.register('crypto', require('./crypto'));
 // global.binding.register('http', require('./http'));
+global.binding.register('punycode', require('./punycode'));
+global.binding.register('URL', require('./URL'));
