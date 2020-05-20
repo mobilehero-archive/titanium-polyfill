@@ -1,11 +1,3 @@
-<a href="#titaniumpolyfill">
-	<p align="center">
-		<img src="https://cdn.secure-api.org/images/warning-sign-area51.png" width="80%" />
-		<img src="https://cdn.secure-api.org/images/border-line-3.png" width="70%" height="50" />
-	</p>
-</a>
-
-
 # @titanium/polyfill
 
 [![@titanium/polyfill](https://img.shields.io/npm/v/@titanium/polyfill.png)](https://www.npmjs.com/package/@titanium/polyfill)
@@ -45,9 +37,10 @@ For use with requesting data on the internet with Titanium Native mobile apps
 * [X] Polyfill for Node.js `buffer`
 * [X] Polyfill for Node.js `querystring`
 * [X] Polyfill for Node.js `crypto`
-* [X] Polyfill for Node.js `http`
+* [ ] Polyfill for Node.js `http`
 * [ ] Polyfill for Node.js `https`
-
+* [X] Polyfill for Node.js `punycode`
+* [X] Polyfill for Node.js `URL`
 
 
 
