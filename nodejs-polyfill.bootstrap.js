@@ -10,3 +10,4 @@ global.binding.register('crypto', require('./crypto'));
 // global.binding.register('http', require('./http'));
 global.binding.register('punycode', require('./punycode'));
 global.binding.register('URL', require('./URL'));
+global.binding.register('path', require('./path'));

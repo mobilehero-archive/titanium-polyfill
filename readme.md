@@ -41,6 +41,7 @@ For use with requesting data on the internet with Titanium Native mobile apps
 * [ ] Polyfill for Node.js `https`
 * [X] Polyfill for Node.js `punycode`
 * [X] Polyfill for Node.js `URL`
+* [X] Polyfill for Node.js `path`
 
 
 
@@ -61,10 +62,15 @@ npm install @titanium/polyfill
 ### Usage
 
 ```javascript
+const buffer = require('assert');
 const buffer = require('buffer');
+const crypto = require('crypto');
 const events = require('events');
 const querystring = require('querystring');
-const crypto = require('crypto');
+const path = require('path');
+const path = require('punycode');
+
+require('URL');  // This is a global variable in Node.js
 ```
 
 
