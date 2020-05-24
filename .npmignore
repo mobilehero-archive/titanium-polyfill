@@ -6,6 +6,8 @@
 .dependabot
 .github
 
+old
+
 example/
 example/*
 
