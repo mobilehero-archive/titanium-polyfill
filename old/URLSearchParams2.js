@@ -114,7 +114,7 @@
     * @param {string} value
     */
 	prototype.set = function set(name, value) {
-		this[__URLSearchParams__][name] = [ `${value}` ];
+		this[__URLSearchParams__][name] = [ value ];
 	};
 
 	/**
@@ -239,6 +239,9 @@
 
 
 	function encode(str) {
+		if( typeof str === 'object' ){
+			str = JSON.stringify(str);
+		}
 		const replace = {
 			'!':   '%21',
 			"'":   '%27',
