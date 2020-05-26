@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "0.0.13",
+	"version": "0.0.14",
 	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
 	"keywords": [
 		"event",
