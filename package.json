@@ -45,7 +45,7 @@
 		"test": "npm run prep",
 		"prep": "npm install --ignore-scripts && npm run list",
 		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prepublishOnly": "git pull && bump release-tag",
+		"prepublishOnly": "git pull && bump release",
 		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production"
 	},
 	"titanium": {
