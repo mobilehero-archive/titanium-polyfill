@@ -1,0 +1,1 @@
+global.crypto = module.exports = require('./crypto_.js');

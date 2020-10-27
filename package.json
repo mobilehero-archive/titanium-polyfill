@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "0.0.15",
+	"version": "1.0.0",
 	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
 	"keywords": [
 		"event",
@@ -14,7 +14,8 @@
 		"polyfill",
 		"node",
 		"buffer",
-		"brenton-house"
+		"brenton-house",
+		"turbo"
 	],
 	"author": {
 		"name": "Brenton House",
@@ -33,11 +34,31 @@
 		"type": "git",
 		"url": "github:brentonhouse/titanium-polyfill"
 	},
-	"devDependencies": {},
+	"devDependencies": {
+		"@rollup/plugin-commonjs": "^16.0.0",
+		"@rollup/plugin-node-resolve": "^10.0.0",
+		"rollup": "^2.32.1",
+		"stream-http": "^3.1.1"
+	},
 	"main": "./index.js",
 	"scripts": {
-		"test": "npm install --ignore-scripts && npm run list",
+		"test": "npm run prep",
+		"prep": "npm install --ignore-scripts && npm run list",
 		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prepublishOnly": "git pull && bump"
+		"prepublishOnly": "git pull && bump release-tag",
+		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production"
+	},
+	"titanium": {
+		"aliases": {
+			"events": "./events.js",
+			"eventemitter2": "./events.js",
+			"buffer": "./buffer.js",
+			"querystring": "./querystring.js",
+			"qs": "./querystring.js",
+			"crypto": "./crypto.js",
+			"punycode": "./punycode.js",
+			"URL": "./URL.js",
+			"path": "./path.js"
+		}
 	}
 }
