@@ -1611,6 +1611,14 @@
 		 _observers: {value: null, writable: true, configurable: true}
 	});
  
+	EventEmitter.default = 	new EventEmitter({
+		wildcard:       true,
+		newListener:    false,
+		removeListener: false,
+		delimiter:      '::',
+		maxListeners:   20,
+	});
+
 	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
 	  define(function() {
