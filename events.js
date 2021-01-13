@@ -1611,13 +1611,24 @@
 		 _observers: {value: null, writable: true, configurable: true}
 	});
  
+	// EventEmitter.default = 	new EventEmitter({
+	// 	wildcard:       false,
+	// 	newListener:    false,
+	// 	removeListener: false,
+	// 	delimiter:      '::',
+	// 	maxListeners:   20,
+	// });
+
 	EventEmitter.default = 	new EventEmitter({
-		wildcard:       true,
-		newListener:    false,
-		removeListener: false,
-		delimiter:      '::',
-		maxListeners:   20,
+			wildcard:          true,  // set this to `true` to use wildcards
+			newListener:       true,  // set this to `true` if you want to emit the newListener event
+			removeListener:    true,  // set this to `true` if you want to emit the removeListener event
+			delimiter:         '::',  // the delimiter used to segment namespaces
+			maxListeners:      20,  // the maximum amount of listeners that can be assigned to an event
+			verboseMemoryLeak: false,  // show event name in memory leak message when more than maximum amount of listeners is assigned
+			ignoreErrors:      true, // disable throwing uncaughtException if an error event is emitted and it has no listeners
 	});
+
 
 	if (typeof define === 'function' && define.amd) {
 		// AMD. Register as an anonymous module.
