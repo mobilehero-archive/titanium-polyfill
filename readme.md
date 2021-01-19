@@ -40,11 +40,8 @@ For use with requesting data on the internet with Titanium Native mobile apps
 * [ ] Polyfill for Node.js `http`
 * [ ] Polyfill for Node.js `https`
 * [X] Polyfill for Node.js `punycode`
-* [X] Polyfill for Node.js `URL`
+* [X] Polyfill for Node.js `URL` [whatwg-url v8.4.0]
 * [X] Polyfill for Node.js `path`
-
-
-
 
 ## 🚀 Getting Started
 
@@ -94,4 +91,4 @@ require('URL');  // This is a global variable in Node.js
 
 ## 📣 Feedback
 
-Have an idea or a comment?  [Join in the conversation here](https://github.com/brentonhouse/titanium-jwt/issues)! 
+Have an idea or a comment?  [Join in the conversation here](https://github.com/brentonhouse/titanium-polyfill/issues)! 
