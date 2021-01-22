@@ -35,9 +35,9 @@
 		"url": "github:brentonhouse/titanium-polyfill"
 	},
 	"devDependencies": {
-		"@rollup/plugin-commonjs": "^16.0.0",
-		"@rollup/plugin-node-resolve": "^10.0.0",
-		"rollup": "^2.32.1",
+		"@rollup/plugin-commonjs": "^17.0.0",
+		"@rollup/plugin-node-resolve": "^11.1.0",
+		"rollup": "^2.38.0",
 		"stream-http": "^3.1.1"
 	},
 	"main": "./index.js",
