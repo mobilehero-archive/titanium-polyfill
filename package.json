@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
 	"keywords": [
 		"event",
@@ -45,8 +45,9 @@
 		"test": "npm run prep",
 		"prep": "npm install --ignore-scripts && npm run list",
 		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prepublishOnly": "git pull && bump release",
-		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production"
+		"prepublishOnly2": "git pull && bump release",
+		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production",
+		"postpublish": "npm deprecate ${npm_package_name}@${npm_package_version} \"Product retired.  No longer maintained.\""
 	},
 	"titanium": {
 		"aliases": {
