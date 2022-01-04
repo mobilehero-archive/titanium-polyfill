@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.7",
+	"version": "1.0.8",
 	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
 	"keywords": [
 		"event",
@@ -15,7 +15,10 @@
 		"node",
 		"buffer",
 		"brenton-house",
-		"turbo"
+		"turbo",
+		"plugin",
+		"axway-amplify",
+		"amplify"
 	],
 	"author": {
 		"name": "Brenton House",
