@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.12",
+	"version": "1.0.13",
 	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
 	"keywords": [
 		"event",
@@ -33,6 +33,7 @@
 			"url": "https://brenton.house"
 		}
 	],
+	"homepage": "https://brenton.house/saying-goodbye-to-axway-amplify-titanium-31a44f3671de",
 	"license": "See license.md",
 	"repository": {
 		"type": "git",
@@ -49,7 +50,7 @@
 		"test": "npm run prep",
 		"prep": "npm install --ignore-scripts && npm run list",
 		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prepublishOnly2": "git pull && bump release",
+		"prepublishOnly": "git pull && bump insane",
 		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production",
 		"postpublish2": "npm deprecate ${npm_package_name}@${npm_package_version} \"Product retired.  No longer maintained.\""
 	},
