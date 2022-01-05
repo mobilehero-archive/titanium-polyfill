@@ -1,7 +1,7 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.14",
-	"description": "Titanium native mobile polyfills necessary to use packages that depend on Node.js modules",
+	"version": "1.0.15",
+	"description": "⭐  Axway Amplify native polyfills necessary to use Node.js modules for Appcelerator Titanium SDK",
 	"keywords": [
 		"event",
 		"events",
@@ -16,10 +16,17 @@
 		"buffer",
 		"brenton-house",
 		"turbo",
+		"sdk",
 		"plugin",
-		"axway-amplify",
+		"amplify",
 		"api-builder",
-		"amplify"
+		"appcelerator-titanium",
+		"titanium-sdk",
+		"titanium-mobile",
+		"titanium-module",
+		"axway-sdk",
+		"axway-amplify",
+		"brenton-house"
 	],
 	"author": {
 		"name": "Brenton House",
@@ -40,19 +47,21 @@
 		"url": "github:brentonhouse/titanium-polyfill"
 	},
 	"devDependencies": {
-		"@rollup/plugin-commonjs": "^17.0.0",
-		"@rollup/plugin-node-resolve": "^11.1.0",
-		"rollup": "^2.38.0",
-		"stream-http": "^3.1.1"
+		"@rollup/plugin-commonjs": "^21.0.1",
+		"@rollup/plugin-node-resolve": "^13.1.3",
+		"rollup": "^2.63.0",
+		"stream-http": "^3.2.0"
 	},
 	"main": "./index.js",
 	"scripts": {
-		"test": "npm run prep",
-		"prep": "npm install --ignore-scripts && npm run list",
-		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prepublishOnly": "git pull && bump insane",
 		"build": "rollup --config --environment INCLUDE_DEPS,BUILD:production",
-		"postpublish2": "npm deprecate ${npm_package_name}@${npm_package_version} \"Product retired.  No longer maintained.\""
+		"postpublish2": "npm deprecate ${npm_package_name}@${npm_package_version} \"Product retired.  No longer maintained.\"",
+		"lint": "eslint . --fix",
+		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
+		"prep": "npm install --ignore-scripts && npm run list",
+		"test": "npm run prep",
+		"prepublishOnly2": "git pull && npm test && bump insane",
+		"prepublishOnly": "git pull && npm test && npm audit fix && bump insane"
 	},
 	"titanium": {
 		"aliases": {
