@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.16",
+	"version": "1.0.17",
 	"description": "⭐  Axway Amplify native polyfills necessary to use Node.js modules for Appcelerator Titanium SDK",
 	"keywords": [
 		"event",
@@ -44,7 +44,7 @@
 	"license": "See license.md",
 	"repository": {
 		"type": "git",
-		"url": "github:brentonhouse/titanium-polyfill"
+		"url": "github:mobilehero-archive/titanium-polyfill"
 	},
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^21.0.1",
