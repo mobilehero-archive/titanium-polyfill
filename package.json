@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.17",
+	"version": "1.0.18",
 	"description": "⭐  Axway Amplify native polyfills necessary to use Node.js modules for Appcelerator Titanium SDK",
 	"keywords": [
 		"event",
@@ -30,13 +30,11 @@
 	],
 	"author": {
 		"name": "Brenton House",
-		"email": "brenton.house@gmail.com",
 		"url": "https://brenton.house"
 	},
 	"maintainers": [
 		{
 			"name": "Brenton House",
-			"email": "brenton.house@gmail.com",
 			"url": "https://brenton.house"
 		}
 	],
@@ -58,7 +56,7 @@
 		"postpublish2": "npm deprecate ${npm_package_name}@${npm_package_version} \"Product retired.  No longer maintained.\"",
 		"lint": "eslint . --fix",
 		"list": "npm pack && tar -xvzf *.tgz && rm -rf package *.tgz",
-		"prep": "npm install --ignore-scripts && npm run list",
+		"prep": "npm install --ignore-scripts",
 		"test": "npm run prep",
 		"prepublishOnly": "git pull && npm test && bump insane",
 		"prepublishOnly2": "git pull && npm test && npm audit fix && bump insane"
@@ -88,17 +86,18 @@
 		"@geek/spawn": "^0.0.3",
 		"@geek/spinner": "^1.0.0",
 		"@geek/tld": "^2.0.1-1",
-		"@titanium/bluebird": "^3.7.8",
-		"@titanium/errors": "^1.0.5",
-		"@titanium/essentials": "^1.0.36",
-		"@titanium/events": "^1.0.18",
-		"@titanium/eventsource": "^1.0.3",
-		"@titanium/jwt": "^1.0.8",
-		"@titanium/module-copier": "^1.0.13",
+		"@titanium/appcelerator": "^6.0.4",
+		"@titanium/bluebird": "^3.7.9",
+		"@titanium/errors": "^1.0.7",
+		"@titanium/essentials": "^1.0.38",
+		"@titanium/events": "^1.0.20",
+		"@titanium/eventsource": "^1.0.5",
+		"@titanium/jwt": "^1.0.9",
+		"@titanium/module-copier": "^1.0.15",
 		"@titanium/please": "^1.0.16",
 		"@titanium/querystring": "^1.0.2",
-		"@titanium/tiapp-xml": "^1.0.11",
-		"@titanium/titanium": "^5.4.5",
-		"@titanium/turbo": "^2.2.22"
+		"@titanium/tiapp-xml": "^1.0.14",
+		"@titanium/titanium": "^5.4.8",
+		"@titanium/turbo": "^2.2.23"
 	}
 }
