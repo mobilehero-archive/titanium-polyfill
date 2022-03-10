@@ -1,6 +1,6 @@
 {
 	"name": "@titanium/polyfill",
-	"version": "1.0.50",
+	"version": "1.0.51",
 	"description": "⭐  Axway Amplify native polyfills necessary to use Node.js modules for Appcelerator Titanium SDK",
 	"keywords": [
 		"event",
@@ -47,7 +47,7 @@
 	"devDependencies": {
 		"@rollup/plugin-commonjs": "^21.0.2",
 		"@rollup/plugin-node-resolve": "^13.1.3",
-		"rollup": "^2.68.0",
+		"rollup": "^2.70.0",
 		"stream-http": "^3.2.0"
 	},
 	"main": "./index.js",
@@ -86,18 +86,18 @@
 		"@geek/spawn": "^1.0.2",
 		"@geek/spinner": "^1.0.2",
 		"@geek/tld": "^2.0.1-1",
-		"@titanium/appcelerator": "^6.0.40",
-		"@titanium/bluebird": "^3.7.45",
-		"@titanium/errors": "^1.0.43",
-		"@titanium/essentials": "^1.0.74",
-		"@titanium/events": "^1.0.50",
-		"@titanium/eventsource": "^1.0.46",
-		"@titanium/jwt": "^1.0.43",
-		"@titanium/module-copier": "^1.0.47",
-		"@titanium/please": "^1.0.52",
-		"@titanium/querystring": "^1.0.41",
-		"@titanium/tiapp-xml": "^1.0.50",
-		"@titanium/titanium": "^5.4.48",
-		"@titanium/turbo": "^2.2.67"
+		"@titanium/appcelerator": "^6.0.42",
+		"@titanium/bluebird": "^3.7.47",
+		"@titanium/errors": "^1.0.45",
+		"@titanium/essentials": "^1.0.75",
+		"@titanium/events": "^1.0.52",
+		"@titanium/eventsource": "^1.0.48",
+		"@titanium/jwt": "^1.0.44",
+		"@titanium/module-copier": "^1.0.50",
+		"@titanium/please": "^1.0.53",
+		"@titanium/querystring": "^1.0.42",
+		"@titanium/tiapp-xml": "^1.0.52",
+		"@titanium/titanium": "^5.4.50",
+		"@titanium/turbo": "^2.2.69"
 	}
 }
